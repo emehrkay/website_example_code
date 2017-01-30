@@ -9,8 +9,8 @@ from model import mapper, Post, User, Author
 
 
 UUID_RE = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}'
-PORT = 9999
-USER_ID = '0c8cfdaa-a42c-4fdb-8f62-e7d54a259c7c'
+PORT = 9997
+USER_ID = 'f91046f0-9b25-4c85-bf10-66dd6acd8470'
 
 
 class BlogHandler(RequestHandler):
@@ -38,11 +38,14 @@ class BlogHandler(RequestHandler):
             'title': self.get_argument('title'),
             'content': self.get_argument('content'),
             'published': self.get_argument('published', False),
+            'tags': self.get_arguments('tags'),
         }
 
     async def get(self, id):
         entry = await self.get_by_id(id)
-        return self.write(entry.data)
+        data = await mapper.data(entry)
+
+        return self.write(data)
 
     async def post(self, id=None):
         # we'll create a new blog post and connect it to the user
@@ -50,15 +53,20 @@ class BlogHandler(RequestHandler):
         user = await self.get_by_id(USER_ID)
         author = mapper.connect(user, entry, edge_entity=Author)
         await mapper.save(author).send()
+        await mapper.add_tags(entry, self.data['tags'])
+        import pudb; pu.db
+        data = await mapper.data(entry)
 
-        return self.write(entry.data)
+        return self.write(data)
 
     async def put(self, id):
         entry = await self.get_by_id(id)
         entry.hydrate(self.data)
         await mapper.save(entry).send()
+        await mapper.add_tags(entry, self.data['tags'])
+        data = await mapper.data(entry)
 
-        return self.write(entry.data)
+        return self.write(data)
 
     async def delete(self, id):
         entry = await self.get_by_id(id)
